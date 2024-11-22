@@ -1,0 +1,6 @@
+[submodule "services/product-service"]
+	path = services/product-service
+	url = https://github.com/vulehuan/rails-microservices-product-service
+[submodule "services/order-service"]
+	path = services/order-service
+	url = https://github.com/vulehuan/rails-microservices-order-service
