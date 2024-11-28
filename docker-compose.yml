@@ -5,15 +5,13 @@ services:
       context: ./nginx
     ports:
       - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/sites-enabled:/etc/nginx/conf.d:ro
     depends_on:
-      - frontend-service
       - product-service
       - order-service
+      - shop
     networks:
-      - microservices-network
+      microservices-network:
+        ipv4_address: 172.18.0.3
 
   db:
     image: postgres:14
@@ -26,7 +24,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - microservices-network
+      microservices-network:
+        ipv4_address: 172.18.0.7
 
   redis:
     image: redis:latest
@@ -36,21 +35,27 @@ services:
     networks:
       - microservices-network
 
-  frontend-service:
+  shop:
     build:
-      context: ./services/frontend-service
-    container_name: frontend-service
+      context: ./applications/shop
+    container_name: shop
     command: bash -c "bundle install && bundle exec rails db:create db:migrate && RAILS_ENV=development bundle exec rails s -b '0.0.0.0' -p 3000"
     ports:
       - "3000:3000"
     depends_on:
       - db
       - redis
+      - product-service
+      - order-service
     volumes:
-      - ./services/frontend-service:/rails
-      - ./config/local/frontend-service.env:/rails/.env
+      - ./applications/shop:/rails
+      - ./config/local/shop.env:/rails/.env
     networks:
-      - microservices-network
+      microservices-network:
+        ipv4_address: 172.18.0.4
+    extra_hosts:
+      - product.local:172.18.0.3
+      - order.local:172.18.0.3
 
   product-service:
     build:
@@ -66,7 +71,11 @@ services:
       - ./services/product-service:/rails
       - ./config/local/product-service.env:/rails/.env
     networks:
-      - microservices-network
+      microservices-network:
+        ipv4_address: 172.18.0.5
+    extra_hosts:
+      - product.local:172.18.0.3
+      - order.local:172.18.0.3
 
   order-service:
     build:
@@ -78,15 +87,23 @@ services:
     depends_on:
       - db
       - redis
+      - product-service
     volumes:
       - ./services/order-service:/rails
       - ./config/local/order-service.env:/rails/.env
     networks:
-      - microservices-network
+      microservices-network:
+        ipv4_address: 172.18.0.6
+    extra_hosts:
+      - product.local:172.18.0.3
+      - order.local:172.18.0.3
 
 networks:
   microservices-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: "172.18.0.0/16"
 
 volumes:
   postgres_data:
